@@ -1,3 +1,7 @@
+/**
+ * Added active BOOL
+**/
+
 /*
   Copyright 2013-2017 appPlant GmbH
 
@@ -25,6 +29,7 @@
 @interface APPBackgroundMode : CDVPlugin {
     AVAudioPlayer* audioPlayer;
     BOOL enabled;
+    BOOL active;
 }
 
 // Activate the background mode

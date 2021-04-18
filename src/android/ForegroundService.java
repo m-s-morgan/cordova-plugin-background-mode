@@ -1,3 +1,6 @@
+/**
+ * Adding minor channel id changes
+ */
 /*
  Copyright 2013 Sebastián Katzer
 
@@ -49,6 +52,8 @@ public class ForegroundService extends Service {
 
     // Fixed ID for the 'foreground' notification
     public static final int NOTIFICATION_ID = -574543954;
+
+    public static final String NOTIFICATION_CHANNEL_ID_SERVICE = "io.profitrx.ForegroundService";
 
     // Default title of the background notification
     private static final String NOTIFICATION_TITLE =
@@ -172,21 +177,20 @@ public class ForegroundService extends Service {
     private Notification makeNotification (JSONObject settings)
     {
         // use channelid for Oreo and higher
-        String CHANNEL_ID = "cordova-plugin-background-mode-id";
         if(Build.VERSION.SDK_INT >= 26){
-        // The user-visible name of the channel.
-        CharSequence name = "cordova-plugin-background-mode";
-        // The user-visible description of the channel.
-        String description = "cordova-plugin-background-moden notification";
+            // The user-visible name of the channel.
+            CharSequence name = "App Service";
+            // The user-visible description of the channel.
+            String description = "ProFit background notifications";
 
-        int importance = NotificationManager.IMPORTANCE_LOW;
+            int importance = NotificationManager.IMPORTANCE_LOW;
 
-        NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name,importance);
+            NotificationChannel mChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID_SERVICE, name, importance);
 
-        // Configure the notification channel.
-        mChannel.setDescription(description);
+            // Configure the notification channel.
+            mChannel.setDescription(description);
 
-        getNotificationManager().createNotificationChannel(mChannel);
+            getNotificationManager().createNotificationChannel(mChannel);
         }
         String title    = settings.optString("title", NOTIFICATION_TITLE);
         String text     = settings.optString("text", NOTIFICATION_TEXT);
@@ -204,7 +208,7 @@ public class ForegroundService extends Service {
                 .setSmallIcon(getIconResId(settings));
 
         if(Build.VERSION.SDK_INT >= 26){
-                   notification.setChannelId(CHANNEL_ID);
+            notification.setChannelId(NOTIFICATION_CHANNEL_ID_SERVICE);
         }
 
         if (settings.optBoolean("hidden", true)) {

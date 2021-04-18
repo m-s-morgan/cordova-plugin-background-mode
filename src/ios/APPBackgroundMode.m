@@ -1,23 +1,27 @@
+/**
+ * Added isActive async method
+ **/
+
 /*
-  Copyright 2013-2017 appPlant GmbH
+ Copyright 2013-2017 appPlant GmbH
 
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements.  See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership.  The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
-*/
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+ */
 
 #import "APPMethodMagic.h"
 #import "APPBackgroundMode.h"
@@ -51,8 +55,9 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
 - (void) pluginInitialize
 {
     enabled = NO;
-    [self configureAudioPlayer];
-    [self configureAudioSession];
+    active = NO;
+    // [self configureAudioPlayer];
+    // [self configureAudioSession];
     [self observeLifeCycle];
 }
 
@@ -64,24 +69,36 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
     NSNotificationCenter* listener = [NSNotificationCenter
                                       defaultCenter];
 
-        [listener addObserver:self
-                     selector:@selector(keepAwake)
-                         name:UIApplicationDidEnterBackgroundNotification
-                       object:nil];
+    [listener addObserver:self
+                 selector:@selector(keepAwake)
+                     name:UIApplicationDidEnterBackgroundNotification
+                   object:nil];
 
-        [listener addObserver:self
-                     selector:@selector(stopKeepingAwake)
-                         name:UIApplicationWillEnterForegroundNotification
-                       object:nil];
+    [listener addObserver:self
+                 selector:@selector(stopKeepingAwake)
+                     name:UIApplicationWillEnterForegroundNotification
+                   object:nil];
 
-        [listener addObserver:self
-                     selector:@selector(handleAudioSessionInterruption:)
-                         name:AVAudioSessionInterruptionNotification
-                       object:nil];
+    [listener addObserver:self
+                 selector:@selector(handleAudioSessionInterruption:)
+                     name:AVAudioSessionInterruptionNotification
+                   object:nil];
 }
 
 #pragma mark -
 #pragma mark Interface
+
+/**
+ * Async method for isActive
+ */
+- (void) isActive:(CDVInvokedUrlCommand*)command
+{
+    CDVPluginResult *result = [CDVPluginResult
+                               resultWithStatus:CDVCommandStatus_OK messageAsBool:active];
+
+    [self.commandDelegate sendPluginResult:result
+                                callbackId:command.callbackId];
+}
 
 /**
  * Enable the mode to stay awake
@@ -106,6 +123,7 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
         return;
 
     enabled = NO;
+    active = NO;
     [self stopKeepingAwake];
     [self execCallback:command];
 }
@@ -121,7 +139,8 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
     if (!enabled)
         return;
 
-    [audioPlayer play];
+    // [audioPlayer play];
+    active = YES;
     [self fireEvent:kAPPBackgroundEventActivate];
 }
 
@@ -134,11 +153,14 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
         NSLog(@"BackgroundMode: On simulator apps never pause in background!");
     }
 
-    if (audioPlayer.isPlaying) {
+    //if (audioPlayer.isPlaying) {
+    if (active) {
+        active = NO;
         [self fireEvent:kAPPBackgroundEventDeactivate];
     }
+    //}
 
-    [audioPlayer pause];
+    //[audioPlayer pause];
 }
 
 /**
@@ -199,8 +221,9 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
  */
 - (void) handleAudioSessionInterruption:(NSNotification*)notification
 {
+    active = NO;
     [self fireEvent:kAPPBackgroundEventDeactivate];
-    [self keepAwake];
+    // [self keepAwake];
 }
 
 /**
@@ -222,7 +245,7 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
     NSString* flag = [NSString stringWithFormat:@"%@._isActive=%@;",
                       kAPPBackgroundJsNamespace, active];
 
-    NSString* depFn = [NSString stringWithFormat:@"%@.on('%@');",
+    NSString* depFn = [NSString stringWithFormat:@"%@.on%@();",
                        kAPPBackgroundJsNamespace, event];
 
     NSString* fn = [NSString stringWithFormat:@"%@.fireEvent('%@');",
@@ -262,11 +285,15 @@ NSString* const kAPPBackgroundEventDeactivate = @"deactivate";
     ^(CDVPlugin *self, NSDictionary *settings) {
         id obj = ((id (*)(id, SEL, NSDictionary*))_imp)(self, _cmd, settings);
 
-        [obj setValue:[NSNumber numberWithBool:YES]
-               forKey:[APPBackgroundMode wkProperty]];
+        @try {
+            [obj setValue:[NSNumber numberWithBool:YES]
+                   forKey:[APPBackgroundMode wkProperty]];
+        } @catch (NSException *e) {}
 
-        [obj setValue:[NSNumber numberWithBool:NO]
-               forKey:@"requiresUserActionForMediaPlayback"];
+        @try {
+            [obj setValue:[NSNumber numberWithBool:NO]
+                   forKey:@"requiresUserActionForMediaPlayback"];
+        } @catch (NSException *e) {}
 
         return obj;
     }
